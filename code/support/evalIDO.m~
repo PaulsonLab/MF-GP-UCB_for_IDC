@@ -1,0 +1,27 @@
+
+function cost = evalIDO( decomp, d)
+addpath(genpath('..\'))
+load_fstate = 1;
+X0 = [21; 20; 4; 50];
+if decomp % build low fidelity model (5 clusters)
+    df = "../data/Clusterdata365_5.mat";
+    if load_fstate
+        load('LF_optimizer_objects.mat')
+    else
+       Fstate = build_IDO_yalmip(1, df, 5, 'y'); 
+    end
+else %build High fidelity model
+    df_name = "../data/Clusterdata365_365.mat";
+    if load_fstate
+        load('HF_optimizer_objects.mat')
+    else
+        Fstate = build_IDO_yalmip(0, df, 365, 'y');
+    end
+end
+
+% determine cost by simulating physical constraint satisfaction
+sol = Fstate(X0(1:3),,d);
+%return cost
+cost = ControlSimulator(sol,d);
+
+end

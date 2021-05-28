@@ -1,0 +1,217 @@
+%% function [] = CLVplot(choice)
+% plot trajectories for closed-loop verification 
+% Choice 1: plot 1 year long trajectories
+% Choice 2: plot nd day trajectory from nd winter and summer days
+% Choice 3: scatter nd day trajectory from nd winter and summer days 
+% Choice 4: heatmap of trajectory (hour vs day)
+% Choice 5: scatter of control trajectory
+% Choice 6: heatmap of control trajectory
+%
+
+function [] = IDOplot(choice)
+%% load states trajectories
+
+%load X1(Temp) trajectory - best values (lowest cost)
+
+load('IDO_x1.mat')       
+
+%load X4(SOC) trajectory - best values (lowest cost)
+load('IDO_x4.mat')       
+
+%% load inputs trajectories
+
+%load U1(heating) 
+load('IDO_u1.mat')      
+
+%load U2(cooling) 
+load('IDO_u2.mat')       
+
+%load U3(grid) 
+load('IDO_u3.mat')       
+%% compile solutions for easy plotting
+% compile state trajectories
+X1 = {x1};
+X4 = {x4};
+% compile control trajectories
+U1 = {u1};
+U2 = {u2};
+U3 = {u3};
+
+%% plotting set-up
+t = linspace(0,365,8761);
+
+xhcLb = [19*ones(1,8),21*ones(1,10),19*ones(1,6)]; 
+xhcUb = [30*ones(1,8),26*ones(1,10),30*ones(1,6)];
+
+%% Choice 1
+if choice == 1
+    figure(1); hold on;
+    plot(t, X1{1}, 'b')
+    plot(t(2:end), repmat(xhcLb,1,365), ':k', 'Linewidth', 2)
+    plot(t(2:end), repmat(xhcUb,1,365), ':k', 'Linewidth', 2)
+    xlabel('Day')
+    ylabel('Temp ^o C')
+    title('X_1 Trajectory')
+
+    figure(2); hold on;
+    plot(t, (X4{1}),'b')
+    plot(t, zeros(1,24*365+1), ':k', 'Linewidth', 2)
+    plot(t, ones(1,24*365+1)*100, ':k', 'Linewidth', 2)
+    xlabel('Day')
+    ylabel('SOC')
+    ylim([0 100])
+    title('X_4 Trajectory')
+end
+
+%% Choice 2
+if choice == 2    
+    nd = 10;
+    figure(3); hold on;
+    p1 = plot(t(1:24*nd), X1{1}(:,1:24*nd),'-b');
+    p2 = plot(t(1:24*nd), X1{1}(:,6*30*24+1:6*30*24+24*nd),'-r');
+    plot(t(1:24*nd), repmat(xhcLb,1,nd), ':k', 'Linewidth', 2)
+    plot(t(1:24*nd), repmat(xhcUb,1,nd), ':k', 'Linewidth', 2)
+    xlabel('Day')
+    ylabel('Temp ^oC')
+    title('X_1 Trajectory')
+
+    figure(4); hold on;
+    p1 = plot(t(1:24*nd), X4{1}(:,1:24*nd),'-b');
+    p2 = plot(t(1:24*nd), X4{1}(:,6*30*24+1:6*30*24+24*nd),'-r');
+    plot(t(1:24*nd), zeros(1,24*nd), ':k', 'Linewidth', 2)
+    plot(t(1:24*nd), ones(1,24*nd)*100, ':k', 'Linewidth', 2)
+    xlabel('Day')
+    ylabel('SOC')
+    ylim([0 100])
+
+    title('X_2 Trajectory')
+end
+
+
+
+%% Choice 4
+if choice == 4
+    figure(7)
+    title('Mean Temperature Heat map')
+    meanX = X1{1};
+    meanX(meanX(2:end)<repmat(xhcLb,1,365)) = nan;
+    meanX(meanX(2:end)>repmat(xhcUb,1,365)) = nan;
+    h = heatmap(reshape(meanX(2:end),24,365));    
+    grid off
+    colormap cool;   snapnow
+    caxis([19, 30]);
+    ylabel('Hour of day')
+    xlabel('Day of year')
+    %make special labels for heat map
+    XLabels = 1:365;        YLabels = 1:24;
+    % Convert each number in the array into a string
+    CustomXLabels = string(XLabels);
+    CustomYLabels = string(YLabels);
+    % Replace all but the fifth elements by spaces
+    CustomXLabels(mod(XLabels,30) ~= 0) = " ";
+    CustomYLabels(mod(YLabels,4) ~= 0) = " ";
+    % Set the 'XDisplayLabels' property of the heatmap 
+    % object 'h' to the custom x-axis tick labels
+    h.XDisplayLabels = CustomXLabels;
+    h.YDisplayLabels = CustomYLabels;
+    
+
+    figure(8)
+    title('Mean SOC Heat map')
+    meanX = X4{1};
+    meanX(meanX(2:end)<0) = nan;
+    meanX(meanX(2:end)>100) = nan;
+    h = heatmap(reshape(meanX(2:end),24,365));
+    grid off
+    colormap cool;  snapnow
+    caxis([0, 100]);
+    ylabel('Hour of day')
+    xlabel('Day of year')
+    %make special labels for heat map
+    XLabels = 1:365;        YLabels = 1:24;
+    % Convert each number in the array into a string
+    CustomXLabels = string(XLabels);
+    CustomYLabels = string(YLabels);
+    % Replace all but the fifth elements by spaces
+    CustomXLabels(mod(XLabels,30) ~= 0) = " ";
+    CustomYLabels(mod(YLabels,4) ~= 0) = " ";
+    % Set the 'XDisplayLabels' property of the heatmap 
+    % object 'h' to the custom x-axis tick labels
+    h.XDisplayLabels = CustomXLabels;
+    h.YDisplayLabels = CustomYLabels;
+end
+
+%% Choice 5
+if choice == 5
+    nd = 10;
+    figure(9); hold on;
+    p1 = stairs(t(1:24*nd), U1{1}(1,1:24*nd)-U2{1}(1,1:24*nd),'b');
+    p2 = stairs(t(1:24*nd), U1{1}(1,6*30*24+1:6*30*24+24*nd)...
+        -U2{1}(1,6*30*24+1:6*30*24+24*nd), 'r');
+    ylim([-1500 1500])
+    legend('Winter', 'Summer')
+    xlabel('Day')
+    ylabel('Net heating (U1-U2)')
+    title('Net heating (U1-U2)')
+
+    figure(10); hold on;
+    p1 = stairs(t(1:24*nd), U3{1}(1,1:24*nd),'-b');
+    p2 = stairs(t(1:24*nd), U3{1}(1,6*30*24+1:6*30*24+24*nd),'-r');
+    legend('Winter', 'Summer')
+    xlabel('Day')
+    ylabel('Energy from Grid')
+    ylim([-1500 1500])
+    title('Energy from Grid (U3)')
+end
+
+%% Choice 6
+if choice == 6
+    figure(11)
+    meanX = (U1{1}-U2{1});
+    h = heatmap(reshape(meanX,24,365));    
+    grid off
+    colormap cool;   snapnow
+    caxis([-1500, 1500]);
+    ylabel('Hour of day')
+    xlabel('Day of year')
+    title('Mean Temperature Heat map')
+    %make special labels for heat map
+    XLabels = 1:365;        YLabels = 1:24;
+    % Convert each number in the array into a string
+    CustomXLabels = string(XLabels);
+    CustomYLabels = string(YLabels);
+    % Replace all but the fifth elements by spaces
+    CustomXLabels(mod(XLabels,30) ~= 0) = " ";
+    CustomYLabels(mod(YLabels,4) ~= 0) = " ";
+    % Set the 'XDisplayLabels' property of the heatmap 
+    % object 'h' to the custom x-axis tick labels
+    h.XDisplayLabels = CustomXLabels;
+    h.YDisplayLabels = CustomYLabels;
+
+    figure(12)
+    meanX = (U3{1});
+    h = heatmap(reshape(meanX,24,365));
+    grid off
+    colormap cool;  snapnow
+    caxis([-1500, 1500]);
+    ylabel('Hour of day')
+    xlabel('Day of year')
+    title('Mean SOC Heat map')
+    %make special labels for heat map
+    XLabels = 1:365;        YLabels = 1:24;
+    % Convert each number in the array into a string
+    CustomXLabels = string(XLabels);
+    CustomYLabels = string(YLabels);
+    % Replace all but the fifth elements by spaces
+    CustomXLabels(mod(XLabels,30) ~= 0) = " ";
+    CustomYLabels(mod(YLabels,4) ~= 0) = " ";
+    % Set the 'XDisplayLabels' property of the heatmap 
+    % object 'h' to the custom x-axis tick labels
+    h.XDisplayLabels = CustomXLabels;
+    h.YDisplayLabels = CustomYLabels;
+    ti
+end
+
+
+
+end
